@@ -9,11 +9,11 @@ Natural visits default to every 2–4 hours, with a six-hour cooldown per player
 Rusty's current direction overrides the earlier suggestion to use Aberrant Mobs:
 this is its own unique creature, with no dependency on or changes to that mod.
 The sound reference is the Schnappviech in Atlanta, season 2 episode 4, "Helen".
-Matching that sound remains a listening gate, not a claim established by source code.
+Exact resemblance to that sound remains unverified by listening.
 
 `domain` contains JDK-only encounter rules; `main` adapts them to the real game;
 `gametest` contains real-server tests and the silent rendering booth. Art and sound
-provenance belongs in `devtools/art/SOURCES.md`. No release is authorized.
+provenance belongs in `devtools/art/SOURCES.md`. Rusty explicitly authorized the 0.1.0 release on 2026-09-18.
 
 Status, 2026-09-18: local 0.1.0 implemented. Ten domain JUnit tests and eleven
 dedicated-server gametests passed in this session, including actual disk reopen,
@@ -28,4 +28,4 @@ The natural escape fixture explicitly keeps its player looking away during the
 chase: a fixed compass bearing did not establish the test's intended unwatched
 condition as the random flee route curved. The production escape requirements
 remain unchanged. The exact Atlanta audio resemblance remains unverified; the
-bundled CC0 giggles need human listening review. No release is authorized.
+bundled CC0 giggles need human listening review. Rusty approved release with that disclosed limitation.

@@ -4,7 +4,7 @@ A standalone NeoForge 1.21.1 mod. A towering folklore prankster follows a player
 gives itself away with a giggle, steals one item, and demands a snack to return it.
 It is immortal; catching it and landing three spaced hits also recovers the item.
 
-Local 0.1.0 build; unreleased. Minecraft **1.21.1**, NeoForge **21.1.248 or newer
+[**0.1.0**](https://github.com/the-rusty-shackleford/minecraft-schnappviecher/releases/tag/v0.1.0). Minecraft **1.21.1**, NeoForge **21.1.248 or newer
 21.1.x**, Java **21**. Install the same jar on client and server. It has its own
 entity, model, animation, sounds and behavior, with no dependency on Aberrant Mobs.
 
