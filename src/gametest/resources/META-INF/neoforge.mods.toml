@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="AGPL-3.0-or-later"
+[[mods]]
+modId="schnappviecher_gametest"
+version="1"
+displayName="Schnappviecher verification"
+[[dependencies.schnappviecher_gametest]]
+modId="schnappviecher"
+type="required"
+versionRange="[0.1,)"
+ordering="AFTER"
+side="BOTH"

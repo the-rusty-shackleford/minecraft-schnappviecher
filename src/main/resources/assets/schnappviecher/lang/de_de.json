@@ -1,0 +1,17 @@
+{
+  "entity.schnappviecher.schnappviech":"Schnappviech",
+  "item.schnappviecher.schnappviech_spawn_egg":"Schnappviech-Spawn-Ei",
+  "subtitles.schnappviecher.giggle":"Schnappviech kichert",
+  "subtitles.schnappviecher.clack":"Schnappviech schnappt",
+  "subtitles.schnappviecher.yelp":"Schnappviech protestiert",
+  "notice.schnappviecher.title":"SCHNAPP!",
+  "notice.schnappviecher.escaped":"%s: erwischt!",
+  "notice.schnappviecher.invoice":"VORÜBERGEHEND UMBESITZT: %1$s vermisst %2$s. Bearbeitungsgebühr: ein Keks, Brot oder Apfel.",
+  "notice.schnappviecher.fee":"Bearbeitungsgebühr: ein Keks, Brot oder Apfel. Rechtsklick zum Verhandeln.",
+  "notice.schnappviecher.receipt":"BEGLICHEN: %s hat erfolgreich mit einem Teppich verhandelt.",
+  "command.schnappviecher.visit":"Ein Schnappviech ist unterwegs.",
+  "command.schnappviecher.no_site":"Es läuft bereits ein Besuch oder es gibt keinen sicheren geladenen Platz.",
+  "command.schnappviecher.dismiss":"Besuch beendet. Beschlagnahmtes Eigentum kommt beim nächsten Besuch mit.",
+  "command.schnappviecher.clear":"Das Amt für fragwürdige Anschaffungen hat nichts von dir.",
+  "command.schnappviecher.owed":"Beschlagnahmt: %s. Ein Snack genügt. Das Schnappviech kommt wieder."
+}

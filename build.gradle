@@ -1,0 +1,116 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.144'
+}
+version = mod_version
+group = mod_group_id
+base { archivesName = mod_id }
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+repositories { mavenCentral() }
+
+// The domain and its JUnit tests cannot import Minecraft. Only the two
+// adapter source sets receive the game, and gametest never ships.
+sourceSets { domain; gametest }
+var structures = tasks.register('copyGameTestStructures', Copy) {
+    from 'devtools/gameteststructures'
+    into 'run/gameteststructures'
+}
+var prepareBooth = tasks.register('prepareBooth', Copy) {
+    from 'run/world'
+    into 'run/booth/saves/booth'
+    exclude 'session.lock'
+}
+var configureBooth = tasks.register('configureBooth') {
+    dependsOn prepareBooth
+    def options = layout.projectDirectory.file('run/booth/options.txt').asFile
+    def level = layout.projectDirectory.file('run/booth/saves/booth/level.dat').asFile
+    doLast {
+        if (!level.isFile()) throw new GradleException('Run ./gradlew build first to create the booth world.')
+        def settings = [soundCategory_master:'0.0', onboardAccessibility:'false', pauseOnLostFocus:'false',
+                        maxFps:'30', enableVsync:'false', renderDistance:'6', simulationDistance:'5',
+                        guiScale:'2', fullscreen:'false', showSubtitles:'true', tutorialStep:'none']
+        def lines = options.exists() ? options.readLines().findAll { !settings.containsKey(it.split(':', 2)[0]) } : []
+        options.parentFile.mkdirs()
+        options.text = (lines + settings.collect { key, value -> "${key}:${value}" }).join('\n') + '\n'
+    }
+}
+neoForge {
+    version = project.neo_version
+    parchment {
+        mappingsVersion = '2024.11.17'
+        minecraftVersion = '1.21.1'
+    }
+    runs {
+        client { client() }
+        server { server(); programArgument '--nogui' }
+        gameTestServer {
+            type = 'gameTestServer'
+            sourceSet = sourceSets.gametest
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            taskBefore structures
+        }
+        photoBooth {
+            client()
+            sourceSet = sourceSets.gametest
+            gameDirectory = file('run/booth')
+            systemProperty 'schnappviecher.booth', 'true'
+            programArguments.addAll('--quickPlaySingleplayer', 'booth')
+            programArguments.addAll('--width', '1280', '--height', '720')
+            taskBefore configureBooth
+        }
+    }
+    mods {
+        "${mod_id}" { sourceSet(sourceSets.domain); sourceSet(sourceSets.main) }
+        "${mod_id}_gametest" { sourceSet(sourceSets.gametest) }
+    }
+    addModdingDependenciesTo(sourceSets.gametest)
+}
+neoForge.runs.matching { !(it.name in ['gameTestServer', 'photoBooth']) }.configureEach {
+    loadedMods = neoForge.mods.matching { it.name != "${mod_id}_gametest" }
+}
+dependencies {
+    implementation sourceSets.domain.output
+    gametestImplementation sourceSets.main.output
+    gametestImplementation sourceSets.domain.output
+    testImplementation sourceSets.domain.output
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.9.2'
+}
+tasks.named('test', Test) { useJUnitPlatform() }
+jar {
+    from sourceSets.domain.output
+    from 'LICENSE'
+    from('devtools/art/SOURCES.md') { into 'META-INF'; rename { 'ASSET-SOURCES.md' } }
+}
+tasks.named('runGameTestServer') { task ->
+    def log = layout.projectDirectory.file('run/logs/latest.log').asFile
+    task.doLast {
+        def text = log.exists() ? log.text : ''
+        def passed = text =~ /All (\d+) required tests passed/
+        if (!passed.find() || passed.group(1).toInteger() == 0 || text =~ /Mod loading has failed/) {
+            throw new GradleException("No successful required gametest suite in ${log}")
+        }
+        task.logger.lifecycle("gametest: ${passed.group(1)} required tests passed")
+    }
+}
+if (!project.hasProperty('skipGameTests')) tasks.named('check') { dependsOn 'runGameTestServer' }
+tasks.named('runPhotoBooth') { task ->
+    def log = layout.projectDirectory.file('run/booth/logs/latest.log').asFile
+    task.doLast {
+        def text = log.exists() ? log.text : ''
+        if (!text.contains('SCHNAPP BOOTH PASSED:') || text.contains('SCHNAPP BOOTH FAILED:')) {
+            throw new GradleException("The real-client booth did not pass: ${log}")
+        }
+    }
+}
+var metadata = tasks.register('generateModMetadata', ProcessResources) {
+    def values = [mod_id: mod_id, mod_name: mod_name, mod_version: mod_version, neo_version: neo_version]
+    inputs.properties values
+    expand values
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+sourceSets.main.resources.srcDir metadata
+neoForge.ideSyncTask metadata
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }

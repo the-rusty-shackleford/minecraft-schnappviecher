@@ -1,0 +1,17 @@
+{
+  "entity.schnappviecher.schnappviech":"Schnappviech",
+  "item.schnappviecher.schnappviech_spawn_egg":"Schnappviech Spawn Egg",
+  "subtitles.schnappviecher.giggle":"Schnappviech giggles",
+  "subtitles.schnappviecher.clack":"Schnappviech snaps its jaws",
+  "subtitles.schnappviecher.yelp":"Schnappviech protests",
+  "notice.schnappviecher.title":"SCHNAPP!",
+  "notice.schnappviecher.escaped":"%s got got!",
+  "notice.schnappviecher.invoice":"PROPERTY TEMPORARILY REASSIGNED: %1$s's %2$s is being held pending one cookie, bread, or apple.",
+  "notice.schnappviecher.fee":"Processing fee: one cookie, bread, or apple. Right-click to negotiate.",
+  "notice.schnappviecher.receipt":"ACCOUNT SETTLED: %s has successfully negotiated with a carpet.",
+  "command.schnappviecher.visit":"A Schnappviech is on its way.",
+  "command.schnappviecher.no_site":"A visit is already active, or no safe loaded spawn site is nearby.",
+  "command.schnappviecher.dismiss":"Visit dismissed. Outstanding property will return with a later visit.",
+  "command.schnappviecher.clear":"The Department of Questionable Acquisitions has none of your belongings.",
+  "command.schnappviecher.owed":"Your %s awaits one snack. The Schnappviech will visit again."
+}

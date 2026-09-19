@@ -1,0 +1,5 @@
+{
+  "giggle": {"subtitle":"subtitles.schnappviecher.giggle","sounds":["schnappviecher:giggle1","schnappviecher:giggle2","schnappviecher:giggle3"]},
+  "clack": {"subtitle":"subtitles.schnappviecher.clack","sounds":[{"name":"minecraft:block.bamboo_wood_button.click_on","type":"event","pitch":0.6,"volume":1.8}]},
+  "yelp": {"subtitle":"subtitles.schnappviecher.yelp","sounds":[{"name":"minecraft:entity.fox.hurt","type":"event","pitch":0.85,"volume":0.7}]}
+}
