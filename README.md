@@ -1,20 +1,29 @@
 # Schnappviecher
 
 A standalone NeoForge 1.21.1 mod. A towering folklore prankster follows a player,
-gives itself away with a giggle, steals one item, and demands a snack to return it.
+leaves an occasional quiet giggle as a clue, steals one item, and demands a snack to return it.
 It is immortal; catching it and landing three spaced hits also recovers the item.
 
-[**0.1.0**](https://github.com/the-rusty-shackleford/minecraft-schnappviecher/releases/tag/v0.1.0). Minecraft **1.21.1**, NeoForge **21.1.248 or newer
+[**0.1.1**](https://github.com/the-rusty-shackleford/minecraft-schnappviecher/releases/tag/v0.1.1). Minecraft **1.21.1**, NeoForge **21.1.248 or newer
 21.1.x**, Java **21**. Install the same jar on client and server. It has its own
 entity, model, animation, sounds and behavior, with no dependency on Aberrant Mobs.
+
+**0.1.1** fixes erratic escape routes and swimming, and makes the pre-theft
+approach quieter and less conspicuous. It is part of the shared-pack 1.52.0 rollout;
+use **Update Pack** in Prism when deployment is announced.
 
 ## The prank
 
 - One Schnappviech visits at a time, normally every **2–4 hours**. It picks a
   survival/adventure player in the Overworld, with a **six-hour cooldown** per player.
-- It appears behind its target, follows for 1–2 minutes, giggles occasionally,
-  and freezes when that player looks at it. It needs an open, unwatched approach
-  to steal; it cannot take items through a wall.
+- It appears behind its target and waits roughly 12 blocks behind them during
+  its 1–2 minute stalking period, including while they look up or mine down.
+  Stalking footsteps are soft; subdued giggles occur every 30–60 seconds.
+  It freezes when that player looks at it, then closes in when its theft delay
+  expires. It needs an open, unwatched approach and cannot steal through a wall.
+- After stealing, it keeps a useful escape route instead of repeatedly switching
+  direction. It can paddle across deep water, surface and climb out onto a bank.
+  The louder chase/ransom sounds and recovery mechanics still apply.
 - **Anything carried is fair game:** inventory, hotbar, equipped armor and offhand.
   It takes one item, preserving names, enchantments, damage and container contents.
   A stack of 64 loses one; a filled shulker box goes with its contents.
@@ -97,11 +106,13 @@ transactions across player files, entity chunks and saved data.
 JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew build
 ```
 
-The jar is `build/libs/schnappviecher-0.1.0.jar`. `./gradlew test` exercises ten
-JDK-only encounter/scheduling tests. `./gradlew build` also runs eleven real-server
+The jar is `build/libs/schnappviecher-0.1.1.jar`. `./gradlew test` exercises ten
+JDK-only encounter/scheduling tests. `./gradlew build` also runs eighteen real-server
 gametests: full ItemStack persistence, every carried slot, actual player attacks,
 all three payments, offline-owner recovery, reserved pickup, stale actors, title
-delivery to multiple players, and natural spawning/navigation/theft/escape.
+delivery to multiple players, natural spawning/navigation/theft/escape, stable
+escape routes, river crossings, submerged and open-water escape, quieter stalking
+sound packets, distance while looking down, and theft prevention while watched.
 `-PskipGameTests` is a development shortcut, not the full validation gate.
 
 After the first build, `./gradlew runPhotoBooth` runs a separate, self-closing client

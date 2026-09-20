@@ -3,6 +3,7 @@ package com.chunkworks.schnappviecher;
 
 import com.chunkworks.schnappviecher.domain.Encounter;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -18,10 +19,14 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.ai.util.DefaultRandomPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
@@ -29,6 +34,7 @@ import java.util.UUID;
 /**
  * An immortal, ground-walking prankster. AF: encounter is its current performance,
  * victim fixes one player's identity, and the world ledger owns any stolen item.
+ * escapeDestination identifies only the current transient flee route, never a stalk.
  * RI: only the ledger's actor may steal/settle/announce; client stack is display
  * only; no player damage, death loot, block breaking, or forced chunk loading.
  */
@@ -40,13 +46,31 @@ public final class Schnappviech extends PathfinderMob {
     private Encounter encounter=Encounter.start();
     @Nullable private UUID victim;
     private int stealAfter;
-    private int giggleIn=80;
+    private int giggleIn=600;
     private int absent;
     private int reaction;
+    @Nullable private BlockPos escapeDestination;
 
     /** requires: registered type and level; effects: creates an unassigned creature; throws: none. */
     public Schnappviech(EntityType<? extends Schnappviech> type,Level level) {
         super(type,level);setPersistenceRequired();xpReward=0;
+        // FloatGoal enables surface navigation; water must also be a valid escape
+        // destination (DefaultRandomPos rejects nodes with a positive malus).
+        setPathfindingMalus(PathType.WATER,0);
+    }
+    // Retain momentum while paddling, including actors loaded from older saves.
+    // Vanilla water physics and FloatGoal still handle buoyancy and bank climbing.
+    @Override protected float getWaterSlowDown() { return .9f; }
+    @Override protected PathNavigation createNavigation(Level level) {
+        return new GroundPathNavigation(this,level) {
+            @Override public boolean isStableDestination(BlockPos pos) {
+                // A floating actor can finish surface routes, not routes on the
+                // riverbed. DefaultRandomPos consults this before choosing a goal.
+                if(level.getFluidState(pos).is(FluidTags.WATER))
+                    return level.getFluidState(pos.above()).isEmpty();
+                return super.isStableDestination(pos);
+            }
+        };
     }
     @Override protected void registerGoals() { goalSelector.addGoal(0,new FloatGoal(this)); }
     @Override protected void defineSynchedData(SynchedEntityData.Builder b) {
@@ -61,6 +85,7 @@ public final class Schnappviech extends PathfinderMob {
         victim=player.getUUID();claims.actor(getUUID());
         stealAfter=PrankConfig.STALK_TICKS.get()+random.nextInt(1201);
         encounter=claims.owes(victim)?new Encounter(claims.announced(victim)?Encounter.Stage.RANSOM:Encounter.Stage.CHASE,0,0,0,0):Encounter.start();
+        giggleIn=nextGiggleDelay();
         claims.visited(victim,level().getServer().overworld().getGameTime());sync();
     }
     private Claims claims() { return Claims.get(level().getServer()); }
@@ -103,8 +128,8 @@ public final class Schnappviech extends PathfinderMob {
         encounter=encounter.tick(seen);
         getLookControl().setLookAt(player,25,15);
         if(--giggleIn<=0&&encounter.stage()!=Encounter.Stage.RETREAT) {
-            giggleIn=160+random.nextInt(241);entityData.set(JAW,28);
-            playSound(Content.GIGGLE.get(),.85f,.94f+random.nextFloat()*.12f);
+            giggleIn=nextGiggleDelay();entityData.set(JAW,28);
+            playSound(Content.GIGGLE.get(),encounter.stage()==Encounter.Stage.STALK?.18f:.85f,.94f+random.nextFloat()*.12f);
         }
         switch(encounter.stage()) {
             case STALK -> stalk(player,seen);
@@ -113,6 +138,14 @@ public final class Schnappviech extends PathfinderMob {
             case RETREAT -> { if(tickCount%10==0)flee(player,1.35);if(encounter.age()>100)park(); }
         }
         sync();
+    }
+    private int nextGiggleDelay() {
+        return encounter.stage()==Encounter.Stage.STALK?600+random.nextInt(601):160+random.nextInt(241);
+    }
+    @Override protected void playStepSound(BlockPos pos,net.minecraft.world.level.block.state.BlockState state) {
+        if(stage()!=Encounter.Stage.STALK){super.playStepSound(pos,state);return;}
+        var sound=state.getSoundType(level(),pos,this);
+        playSound(sound.getStepSound(),sound.getVolume()*.03f,sound.getPitch());
     }
     private boolean isWatchedBy(Player player) {
         Vec3 delta=getEyePosition().subtract(player.getEyePosition());
@@ -124,9 +157,12 @@ public final class Schnappviech extends PathfinderMob {
         if(encounter.age()>stealAfter+3600){encounter=encounter.enter(Encounter.Stage.RETREAT);return;}
         if(seen){navigation.stop();return;}
         if(tickCount%10==0) {
-            Vec3 look=player.getLookAngle();
-            double standOff=encounter.age()<stealAfter?5:1.2;
-            navigation.moveTo(player.getX()-look.x*standOff,player.getY(),player.getZ()-look.z*standOff,.72);
+            // Use horizontal heading, not the look vector's shrinking horizontal
+            // projection: mining straight down must not draw us onto their feet.
+            double heading=Math.toRadians(player.getYRot());
+            double standOff=encounter.age()<stealAfter?12:1.2;
+            navigation.moveTo(player.getX()+Math.sin(heading)*standOff,player.getY(),
+                    player.getZ()-Math.cos(heading)*standOff,.72);
         }
     }
     /** requires: server thread; effects: attempts one eligible theft through the real inventory path; throws: none. */
@@ -159,8 +195,14 @@ public final class Schnappviech extends PathfinderMob {
         if(encounter.age()>6000)park();
     }
     private void flee(Player player,double speed) {
+        // Keep making progress on a usable route. Replacing it every half-second
+        // changes the first waypoint repeatedly and can turn a chase into spinning.
+        var destination=navigation.getTargetPos();
+        if(!navigation.isDone()&&!navigation.isStuck()&&destination!=null&&destination.equals(escapeDestination)
+                &&player.distanceToSqr(Vec3.atBottomCenterOf(destination))>16)return;
         Vec3 away=DefaultRandomPos.getPosAway(this,16,4,player.position());
-        if(away!=null)navigation.moveTo(away.x,away.y,away.z,speed);
+        if(away!=null&&navigation.moveTo(away.x,away.y,away.z,speed))
+            escapeDestination=navigation.getTargetPos();
     }
     @Override protected InteractionResult mobInteract(Player player,InteractionHand hand) {
         if(stage()!=Encounter.Stage.RANSOM||heldItem().isEmpty())return InteractionResult.PASS;
@@ -220,7 +262,8 @@ public final class Schnappviech extends PathfinderMob {
         try{encounter=new Encounter(Encounter.Stage.valueOf(tag.getString("PrankStage")),Math.max(0,tag.getInt("PrankAge")),
                 Math.clamp(tag.getInt("Blows"),0,3),Math.max(0,tag.getInt("Immunity")),Math.max(0,tag.getInt("Unseen")));}
         catch(IllegalArgumentException e){encounter=Encounter.start();}
-        stealAfter=Math.max(1,tag.getInt("StealAfter"));giggleIn=Math.max(20,tag.getInt("GiggleIn"));
+        stealAfter=Math.max(1,tag.getInt("StealAfter"));
+        giggleIn=Math.max(encounter.stage()==Encounter.Stage.STALK?600:20,tag.getInt("GiggleIn"));
         if(!level().isClientSide)sync();
     }
 }
