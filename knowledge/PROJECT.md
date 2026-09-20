@@ -30,7 +30,7 @@ condition as the random flee route curved. The production escape requirements
 remain unchanged. The exact Atlanta audio resemblance remains unverified; the
 bundled CC0 giggles need human listening review. Rusty approved release with that disclosed limitation.
 
-## Next release: 0.1.1, authorized and not yet published
+## Current release: 0.1.1
 
 On 2026-09-20 Rusty requested reliable fleeing/swimming and subtler stalking
 ([D-0004](decisions/D-0004.md)). The checkout now implements those changes.
@@ -39,6 +39,7 @@ three new stealth regressions and four movement regressions. The old behavior
 failed the added spacing, early-giggle and navigation cases before their fixes.
 See [verification](../devtools/verification/0.1.1.md).
 
-Publication remains queued with the ongoing C.A.M.P. update. The requested restart
-warning is now 120 seconds, superseding the earlier five-minute request. No restart
-has been scheduled for this update. Do not describe the local jar as deployed.
+Published and deployed on 2026-09-20 with C.A.M.P. 0.2.0 in pack 1.52.0.
+The server restarted after the authorized 120-second warning and countdown
+reminders, loaded the matching artifact and reported 20 TPS. Mod Hub reports the
+server matches the published pack.
