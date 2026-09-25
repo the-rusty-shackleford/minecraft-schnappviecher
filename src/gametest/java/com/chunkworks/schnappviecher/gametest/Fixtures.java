@@ -25,14 +25,19 @@ final class Fixtures {
         return player(h,x,z,new GameProfile(UUID.randomUUID(),"Visitor"+x+z));
     }
     static ServerPlayer player(GameTestHelper h,int x,int z,GameProfile profile) {
+        var pos=h.absolutePos(new BlockPos(x,2,z));
+        return player(h.getLevel(),pos.getX()+.5,pos.getY(),pos.getZ()+.5,0,profile);
+    }
+    /** effects: a real survival player on the level at the position, facing the yaw, weightless. */
+    static ServerPlayer player(net.minecraft.server.level.ServerLevel level,double x,double y,double z,float yaw,GameProfile profile) {
         var cookie=CommonListenerCookie.createInitial(profile,false);
-        var player=new ServerPlayer(h.getLevel().getServer(),h.getLevel(),cookie.gameProfile(),cookie.clientInformation());
+        var player=new ServerPlayer(level.getServer(),level,cookie.gameProfile(),cookie.clientInformation());
         var connection=new Connection(PacketFlow.SERVERBOUND);var channel=new EmbeddedChannel(connection);
         CHANNELS.put(player.getUUID(),channel);
-        h.getLevel().getServer().getPlayerList().placeNewPlayer(connection,player,cookie);
+        level.getServer().getPlayerList().placeNewPlayer(connection,player,cookie);
         player.setGameMode(GameType.SURVIVAL);player.setNoGravity(true);
-        var pos=h.absolutePos(new BlockPos(x,2,z));player.moveTo(pos.getX()+.5,pos.getY(),pos.getZ()+.5,0,0);
-        player.setYHeadRot(0);player.setYBodyRot(0);
+        player.moveTo(x,y,z,yaw,0);
+        player.setYHeadRot(yaw);player.setYBodyRot(yaw);
         return player;
     }
     static void floor(GameTestHelper h) {

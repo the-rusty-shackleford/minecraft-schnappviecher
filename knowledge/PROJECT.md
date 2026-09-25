@@ -30,6 +30,22 @@ condition as the random flee route curved. The production escape requirements
 remain unchanged. The exact Atlanta audio resemblance remains unverified; the
 bundled CC0 giggles need human listening review. Rusty approved release with that disclosed limitation.
 
+## 0.1.2, built 2026-09-25, unreleased
+
+Rusty, on 0.1.1: stuck at walls (no way to an opening found), and a target moving around
+flipped it back and forth with no net movement. Both were reproduced on the unchanged
+creature by two new GameTests before any fix (a thirty-block wall between the creature and
+its post: 1.3 blocks from the wall for the whole run on a one-node route; a player turning a
+quarter every second: five reversals). [D-0005](decisions/D-0005.md): the pure
+`domain.Standoff` gives the stalk a post on the ring round the victim, kept while the victim
+stays within nine to fifteen blocks of it (a turn moves it nowhere), and when a new one is
+needed the candidates out of the victim's view nearest the creature; the creature walks the
+first candidate a route reaches, or the route ending nearest one and holds there five seconds;
+the navigation's search budget is four times vanilla's. Sixteen JUnit, twenty GameTests, the
+booth under Complementary Unbound with a wall scene of three shots; see
+[verification](../devtools/verification/0.1.2.md). Committed, not tagged; waits on Rusty's go
+for pack 1.64.0.
+
 ## Current release: 0.1.1
 
 On 2026-09-20 Rusty requested reliable fleeing/swimming and subtler stalking

@@ -21,6 +21,12 @@ use **Update Pack** in Prism when deployment is announced.
   Stalking footsteps are soft; subdued giggles occur every 30–60 seconds.
   It freezes when that player looks at it, then closes in when its theft delay
   expires. It needs an open, unwatched approach and cannot steal through a wall.
+- Its waiting spot is a post on a ring around the target, kept while they stay
+  within 9–15 blocks of it: turning around does not move it, walking away does,
+  and then it takes the nearest spot out of their view that a route reaches
+  (round a wall's end, for a wall up to about thirty blocks). When no spot can be
+  reached, as with a target indoors, it goes as near as it can and holds there,
+  looking again every five seconds.
 - After stealing, it keeps a useful escape route instead of repeatedly switching
   direction. It can paddle across deep water, surface and climb out onto a bank.
   The louder chase/ransom sounds and recovery mechanics still apply.
@@ -106,18 +112,20 @@ transactions across player files, entity chunks and saved data.
 JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew build
 ```
 
-The jar is `build/libs/schnappviecher-0.1.1.jar`. `./gradlew test` exercises ten
-JDK-only encounter/scheduling tests. `./gradlew build` also runs eighteen real-server
-gametests: full ItemStack persistence, every carried slot, actual player attacks,
+The jar is `build/libs/schnappviecher-0.1.2.jar`. `./gradlew test` exercises sixteen
+JDK-only encounter, scheduling and stand-off tests. `./gradlew build` also runs twenty
+real-server gametests: full ItemStack persistence, every carried slot, actual player attacks,
 all three payments, offline-owner recovery, reserved pickup, stale actors, title
 delivery to multiple players, natural spawning/navigation/theft/escape, stable
 escape routes, river crossings, submerged and open-water escape, quieter stalking
-sound packets, distance while looking down, and theft prevention while watched.
+sound packets, distance while looking down, theft prevention while watched, a stalk
+rounding a wall to its post, and a spinning target moving the stalker nowhere.
 `-PskipGameTests` is a development shortcut, not the full validation gate.
 
 After the first build, `./gradlew runPhotoBooth` runs a separate, self-closing client
-that takes seven screenshots and verifies payment through a real client interaction
-packet. It sets master volume to zero before launch. Use an available desktop or
+that takes ten screenshots (the creature, the theft, the banner, the payment, the
+night, and three of a stalk rounding a wall) and verifies payment through a real client
+interaction packet. It sets master volume to zero before launch. Use an available desktop or
 the existing Xephyr display; only run one rendering client at a time. Put compatible
 Iris/Sodium jars in `run/booth/mods` and select a shader in that profile when testing
 shader compatibility. Captures appear under `run/booth/screenshots`.

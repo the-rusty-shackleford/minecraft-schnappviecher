@@ -2,6 +2,7 @@
 package com.chunkworks.schnappviecher.gametest;
 
 import com.chunkworks.schnappviecher.*;
+import com.mojang.authlib.GameProfile;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -25,7 +26,8 @@ import java.util.function.Consumer;
 /**
  * One silent, self-closing real client. Steps wait for rendered frames and server
  * acknowledgements, so tick catch-up cannot silently skip a photograph. Verifies
- * a real client interaction packet pays the fee. Screenshots are judged separately.
+ * a real client interaction packet pays the fee, and that a stalk rounds a wall to its
+ * post behind a victim (D-0005). Screenshots are judged separately.
  */
 @EventBusSubscriber(modid=TestMod.ID,value=Dist.CLIENT)
 public final class PhotoBooth {
@@ -36,8 +38,9 @@ public final class PhotoBooth {
     private static volatile String failure;
     private static volatile UUID creatureId;
     private static int stage,frames;
-    private static long started;
-    private static Schnappviech creature;
+    private static long started,sceneDue;
+    private static Schnappviech creature,stalker;
+    private static ServerPlayer victim;
 
     @SubscribeEvent public static void frame(RenderFrameEvent.Post event) {
         if(!ACTIVE)return;
@@ -50,6 +53,8 @@ public final class PhotoBooth {
         if(!ready||mc.screen!=null||mc.getOverlay()!=null)return;
         // Capture the timed title while visible even when software shaders render slowly.
         if(++frames<(stage==5?8:35))return;
+        // The wall scene is paced by the server's clock: the creature walks between shots.
+        if(stage>=11&&mc.level.getGameTime()<sceneDue)return;
         frames=0;
         switch(stage++) {
             case 1 -> {shot(mc,"01-front");server(mc,p->camera(p,6,101,-6,45,2));}
@@ -94,9 +99,41 @@ public final class PhotoBooth {
                     camera(p,0,100,-8,0,-7);
                 });
             }
-            case 9 -> shot(mc,"07-night");
-            default -> {if(SAVED.get()>=7){LogUtils.getLogger().info("SCHNAPP BOOTH PASSED: theft, real client repayment, seven saved renders");mc.stop();}}
+            case 9 -> {shot(mc,"07-night");server(mc,PhotoBooth::wallScene);}
+            // The stalk round a wall (D-0005): the creature, held still for the first shot,
+            // stands beyond a wall from its post behind a victim who looks the other way; the
+            // real player is the camera. Then it walks: round the wall's end, and to its post.
+            case 10 -> {shot(mc,"08-wall-start");server(mc,p->stalker.setNoAi(false));sceneDue=mc.level.getGameTime()+100;}
+            case 11 -> {shot(mc,"09-wall-round");sceneDue=mc.level.getGameTime()+220;}
+            case 12 -> {shot(mc,"10-wall-post");server(mc,PhotoBooth::wallDone);}
+            default -> {if(SAVED.get()>=10){LogUtils.getLogger().info("SCHNAPP BOOTH PASSED: theft, real client repayment, the stalk round a wall, ten saved renders");mc.stop();}}
         }
+    }
+    /** effects: daylight again; a stone-brick wall across the platform's north part with its only
+     * gap at the east end; a weightless victim south of it at the platform's middle looking
+     * south, so the whole ring of posts round them lies south of the wall and the nearest to the
+     * creature is the one straight behind them, just south of the wall; a new stalking creature
+     * north of the wall, its AI off until the first shot; the player as a camera high to the east. */
+    private static void wallScene(ServerPlayer p) {
+        var level=p.serverLevel();
+        level.setDayTime(6000);
+        level.setBlockAndUpdate(new BlockPos(-2,100,-3),Blocks.AIR.defaultBlockState());
+        for(int x=-20;x<=18;x++)for(int y=100;y<=102;y++)level.setBlockAndUpdate(new BlockPos(x,y,-9),Blocks.STONE_BRICKS.defaultBlockState());
+        victim=Fixtures.player(level,.5,100,4.5,0,new GameProfile(UUID.randomUUID(),"Victim"));
+        var active=Visits.active(p.server);if(active!=null)active.park();
+        stalker=Content.CREATURE.get().create(level);stalker.moveTo(4.5,100,-14.5,180,0);stalker.setYHeadRot(180);stalker.setYBodyRot(180);
+        level.addFreshEntity(stalker);stalker.begin(victim);stalker.setNoAi(true);
+        camera(p,27,110,-3,90,32);
+    }
+    /** effects: requires the creature south of the wall at a post on the ring round the victim
+     * and out of their view (which post is the search's choice, D-0005), then parks it and
+     * removes the victim. */
+    private static void wallDone(ServerPlayer p) {
+        double gap=Math.hypot(stalker.getX()-victim.getX(),stalker.getZ()-victim.getZ());
+        boolean south=stalker.getZ()>-8,onRing=gap>=9&&gap<=15,behind=stalker.getZ()-victim.getZ()<gap*.5;
+        LogUtils.getLogger().info("SCHNAPP BOOTH wall: the creature stands at {}, {} from the victim, south of the wall {}",stalker.position(),gap,south);
+        try{require(south&&onRing&&behind,"the stalk rounds the wall to a post on the ring out of the victim's view: "+stalker.position()+", "+gap+" from the victim");}
+        finally{stalker.park();Fixtures.remove(victim);}
     }
     private static void setup(ServerPlayer p) {
         PrankConfig.ENABLED.set(false);var level=p.serverLevel();

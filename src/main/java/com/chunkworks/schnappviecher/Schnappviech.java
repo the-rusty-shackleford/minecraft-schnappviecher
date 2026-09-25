@@ -2,6 +2,7 @@
 package com.chunkworks.schnappviecher;
 
 import com.chunkworks.schnappviecher.domain.Encounter;
+import com.chunkworks.schnappviecher.domain.Standoff;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -26,6 +27,7 @@ import net.minecraft.world.entity.ai.util.DefaultRandomPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
@@ -39,6 +41,7 @@ import java.util.UUID;
  * only; no player damage, death loot, block breaking, or forced chunk loading.
  */
 public final class Schnappviech extends PathfinderMob {
+    private static final org.slf4j.Logger LOGGER=com.mojang.logging.LogUtils.getLogger();
     private static final EntityDataAccessor<Integer> STAGE=SynchedEntityData.defineId(Schnappviech.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<ItemStack> HELD=SynchedEntityData.defineId(Schnappviech.class,EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Boolean> WATCHED=SynchedEntityData.defineId(Schnappviech.class,EntityDataSerializers.BOOLEAN);
@@ -50,6 +53,11 @@ public final class Schnappviech extends PathfinderMob {
     private int absent;
     private int reaction;
     @Nullable private BlockPos escapeDestination;
+    /** The stalk's post on the ring round the victim (D-0005); transient, chosen afresh after a load. */
+    @Nullable private Standoff.Point post;
+    private int retryAt;
+    private static final double RING=12,SLACK=.25,CONE=.5,ARRIVED=1.5;
+    private static final int POSTS=8,HOLD=100;
 
     /** requires: registered type and level; effects: creates an unassigned creature; throws: none. */
     public Schnappviech(EntityType<? extends Schnappviech> type,Level level) {
@@ -62,7 +70,7 @@ public final class Schnappviech extends PathfinderMob {
     // Vanilla water physics and FloatGoal still handle buoyancy and bank climbing.
     @Override protected float getWaterSlowDown() { return .9f; }
     @Override protected PathNavigation createNavigation(Level level) {
-        return new GroundPathNavigation(this,level) {
+        var navigation=new GroundPathNavigation(this,level) {
             @Override public boolean isStableDestination(BlockPos pos) {
                 // A floating actor can finish surface routes, not routes on the
                 // riverbed. DefaultRandomPos consults this before choosing a goal.
@@ -71,6 +79,11 @@ public final class Schnappviech extends PathfinderMob {
                 return super.isStableDestination(pos);
             }
         };
+        // The stalk's post is often on the far side of a wall; vanilla's search budget
+        // (sixteen nodes per block of follow range) gives up at the wall with a partial
+        // route to it. Four times that finds the way round a thirty-block wall (D-0005).
+        navigation.setMaxVisitedNodesMultiplier(4);
+        return navigation;
     }
     @Override protected void registerGoals() { goalSelector.addGoal(0,new FloatGoal(this)); }
     @Override protected void defineSynchedData(SynchedEntityData.Builder b) {
@@ -156,14 +169,49 @@ public final class Schnappviech extends PathfinderMob {
         if(encounter.canSteal(stealAfter,seen,hasLineOfSight(player),distanceTo(player))&&trySteal(player))return;
         if(encounter.age()>stealAfter+3600){encounter=encounter.enter(Encounter.Stage.RETREAT);return;}
         if(seen){navigation.stop();return;}
-        if(tickCount%10==0) {
-            // Use horizontal heading, not the look vector's shrinking horizontal
-            // projection: mining straight down must not draw us onto their feet.
-            double heading=Math.toRadians(player.getYRot());
-            double standOff=encounter.age()<stealAfter?12:1.2;
-            navigation.moveTo(player.getX()+Math.sin(heading)*standOff,player.getY(),
-                    player.getZ()-Math.cos(heading)*standOff,.72);
+        if(tickCount%10!=0)return;
+        // Use horizontal heading, not the look vector's shrinking horizontal
+        // projection: mining straight down must not draw us onto their feet.
+        double heading=Math.toRadians(player.getYRot());
+        if(encounter.age()>=stealAfter) {
+            // The approach: close behind them for the theft.
+            navigation.moveTo(player.getX()+Math.sin(heading)*1.2,player.getY(),player.getZ()-Math.cos(heading)*1.2,.72);
+            return;
         }
+        // The wait: a post on the ring round the player, kept while they stay within its band
+        // (a turn of their head moves us nowhere), left only when they walk out of it (D-0005).
+        var me=new Standoff.Point(getX(),getZ());
+        var them=new Standoff.Point(player.getX(),player.getZ());
+        if(post!=null&&Standoff.acceptable(post,them,RING,SLACK)) {
+            if(me.distanceTo(post)<=ARRIVED){navigation.stop();return;}
+            if(!navigation.isDone()||tickCount<retryAt)return;
+        }
+        choosePost(player,me,them,heading);
+    }
+    /** effects: takes the nearest post on the ring that a route reaches, out of the player's
+     * view, and walks; when no post can be reached (the player is indoors), walks the route that
+     * ends nearest one and holds there a while before looking again. Which post a route reaches
+     * is vanilla's search's to say: its walked-distance bookkeeping, overwritten on every visit
+     * and capped at the follow range, starves a search that explores much before a detour, so a
+     * nearer post round a long wall can be missed while a farther one is found; the log line
+     * per choice names what was tried. */
+    private void choosePost(Player player,Standoff.Point me,Standoff.Point them,double heading) {
+        Path nearest=null;Standoff.Point nearestPost=null;double shortfall=Double.MAX_VALUE;
+        var tried=new StringBuilder();
+        for(var candidate:Standoff.candidates(me,them,heading,RING,POSTS,CONE)) {
+            var path=navigation.createPath(BlockPos.containing(candidate.x(),player.getY(),candidate.z()),1);
+            if(path==null){tried.append(String.format(" (%.1f,%.1f):none",candidate.x(),candidate.z()));continue;}
+            tried.append(String.format(" (%.1f,%.1f):%s/%d",candidate.x(),candidate.z(),path.canReach()?"reaches":"short "+path.getDistToTarget(),path.getNodeCount()));
+            if(path.canReach()) {
+                post=candidate;retryAt=0;navigation.moveTo(path,.72);
+                LOGGER.info("stalk from ({},{}) of {} at ({},{}): post ({},{}) reached by {} nodes; tried{}",me.x(),me.z(),player.getScoreboardName(),them.x(),them.z(),candidate.x(),candidate.z(),path.getNodeCount(),tried);
+                return;
+            }
+            if(path.getDistToTarget()<shortfall){shortfall=path.getDistToTarget();nearest=path;nearestPost=candidate;}
+        }
+        post=nearestPost;retryAt=tickCount+HOLD;
+        if(nearest!=null)navigation.moveTo(nearest,.72);
+        LOGGER.info("stalk from ({},{}) of {} at ({},{}): no post reachable, holding {} short of ({},{}); tried{}",me.x(),me.z(),player.getScoreboardName(),them.x(),them.z(),shortfall,nearestPost==null?null:nearestPost.x(),nearestPost==null?null:nearestPost.z(),tried);
     }
     /** requires: server thread; effects: attempts one eligible theft through the real inventory path; throws: none. */
     public boolean trySteal(Player player) {
