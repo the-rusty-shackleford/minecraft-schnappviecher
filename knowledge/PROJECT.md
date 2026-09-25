@@ -30,7 +30,7 @@ condition as the random flee route curved. The production escape requirements
 remain unchanged. The exact Atlanta audio resemblance remains unverified; the
 bundled CC0 giggles need human listening review. Rusty approved release with that disclosed limitation.
 
-## 0.1.2, built 2026-09-25, unreleased
+## 0.1.2, released 2026-09-25 in pack 1.64.0
 
 Rusty, on 0.1.1: stuck at walls (no way to an opening found), and a target moving around
 flipped it back and forth with no net movement. Both were reproduced on the unchanged
@@ -43,10 +43,12 @@ needed the candidates out of the victim's view nearest the creature; the creatur
 first candidate a route reaches, or the route ending nearest one and holds there five seconds;
 the navigation's search budget is four times vanilla's. Sixteen JUnit, twenty GameTests, the
 booth under Complementary Unbound with a wall scene of three shots; see
-[verification](../devtools/verification/0.1.2.md). Committed, not tagged; waits on Rusty's go
-for pack 1.64.0.
+[verification](../devtools/verification/0.1.2.md). Released as tag v0.1.2 and deployed as pack
+1.64.0 at 06:14 UTC on Rusty's "go" ("Schnapp rides along"), with Backpacks+ 0.4.0, Magical Map
+0.3.1 and Warehouse Manager 0.5.0; 20 TPS, parity clean. Not seen in play: the post round a real
+house; the "stalk from … tried …" log line is what to read on the next report.
 
-## Current release: 0.1.1
+## 0.1.1
 
 On 2026-09-20 Rusty requested reliable fleeing/swimming and subtler stalking
 ([D-0004](decisions/D-0004.md)). The checkout now implements those changes.
