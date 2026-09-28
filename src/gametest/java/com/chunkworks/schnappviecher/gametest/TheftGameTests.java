@@ -59,6 +59,27 @@ public final class TheftGameTests {
         h.assertTrue(ItemStack.matches(sword,savedSword.display(p.getUUID())),"damage, name and enchantment retained through save");
         Fixtures.remove(p);h.succeed();
     }
+    /** D-0006: what a carried bag holds is carried, so the creature may take it, one item from one
+     * cell, the bag written through Carried. The bag is Backpacks+'s by registry id (loaded on the
+     * gametest server), in a pocket, not worn. */
+    @GameTest(template="arena",batch="claims")
+    public void aCarriedBagsItemsAreEligibleAndTakenOneAtATime(GameTestHelper h) {
+        Fixtures.floor(h);var p=Fixtures.player(h,5,3);
+        var bag=new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse("backpacksplus:basic_backpack")));
+        bag.set(DataComponents.CONTAINER,ItemContainerContents.fromItems(List.of(ItemStack.EMPTY,new ItemStack(Items.DIAMOND,5))));
+        p.getInventory().setItem(20,bag);
+        var places=com.chunkworks.schnappviecher.Schnappviech.eligible(p);
+        h.assertValueEqual(places.size(),2,"the bag in its slot and the diamonds in it");
+        var inBag=places.get(1);
+        h.assertTrue(inBag.store().equals("backpacksplus:slot/20")&&inBag.cell()==1,"the diamonds' cell: "+inBag);
+        Claims claims=new Claims();UUID a=UUID.randomUUID();claims.actor(a);
+        h.assertTrue(claims.steal(a,p,inBag.store(),inBag.cell()),"a diamond out of the bag");
+        var left=p.getInventory().getItem(20).getOrDefault(DataComponents.CONTAINER,ItemContainerContents.EMPTY).stream().filter(s->s.is(Items.DIAMOND)).mapToInt(ItemStack::getCount).sum();
+        h.assertValueEqual(left,4,"one taken, four left");
+        h.assertTrue(claims.display(p.getUUID()).is(Items.DIAMOND)&&claims.display(p.getUUID()).getCount()==1,"the ledger holds the one diamond");
+        h.assertFalse(claims.steal(a,p,"backpacksplus:slot/20",0),"an empty cell is not stolen from");
+        Fixtures.remove(p);h.succeed();
+    }
     @GameTest(template="arena",batch="claims")
     public void oneItemOneClaimAndOnlyTheAuthorizedActor(GameTestHelper h) {
         Fixtures.floor(h);var p=Fixtures.player(h,4,3);Claims claims=new Claims();UUID a=UUID.randomUUID();claims.actor(a);

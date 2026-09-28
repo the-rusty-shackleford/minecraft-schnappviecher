@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 Rusty Shackleford and nfx. SPDX-License-Identifier: AGPL-3.0-or-later */
 package com.chunkworks.schnappviecher;
 
+import com.chunkworks.carried.api.Carried;
 import com.chunkworks.schnappviecher.domain.VisitSchedule;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -77,15 +78,15 @@ public final class Claims extends SavedData {
     public boolean owes(UUID victim) { return debts.containsKey(victim); }
     /** requires: none; effects: returns a defensive display copy; throws: none. */
     public ItemStack display(UUID victim) { Claim c=debts.get(victim);return c==null?ItemStack.EMPTY:c.stack().copy(); }
-    /** requires: server thread, actual player's inventory; effects: atomically moves one eligible item into the ledger; throws: none. */
-    public boolean steal(UUID creature, Player victim, int slot) {
-        if(!isActor(creature)||owes(victim.getUUID())||victim.isCreative()||victim.isSpectator()
-                ||slot<0||slot>=victim.getInventory().getContainerSize()) return false;
-        ItemStack source=victim.getInventory().getItem(slot);
-        if(source.isEmpty()) return false;
-        ItemStack item=source.split(1);
+    /** requires: server thread, actual player's inventory; effects: atomically moves one eligible item from an inventory slot (0–40) into the ledger; throws: none. */
+    public boolean steal(UUID creature, Player victim, int slot) { return steal(creature,victim,Carried.INVENTORY,slot); }
+    /** requires: server thread, actual player; effects: atomically moves one item from a place the player carries (an inventory slot, or a cell of a carried bag: Carried, D-0006) into the ledger; false with nothing moved for a stale actor, an outstanding claim, creative or spectator, or an empty or missing place; throws: none. */
+    public boolean steal(UUID creature, Player victim, String store, int cell) {
+        if(!isActor(creature)||owes(victim.getUUID())||victim.isCreative()||victim.isSpectator()) return false;
+        ItemStack item=Carried.takeFrom(victim,store,cell,1);
+        if(item.isEmpty()) return false;
         debts.put(victim.getUUID(),new Claim(item,false,false));
-        victim.getInventory().setChanged(); victim.containerMenu.broadcastChanges(); setDirty(); return true;
+        victim.containerMenu.broadcastChanges(); setDirty(); return true;
     }
     /** requires: server thread; effects: marks one escape announcement, returning false for repeats or absent claims; throws: none. */
     public boolean announce(UUID victim) {

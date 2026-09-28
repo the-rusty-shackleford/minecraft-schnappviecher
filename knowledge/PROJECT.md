@@ -1,5 +1,9 @@
 # Schnappviecher
 
+**0.1.3, built 2026-09-28, unreleased**: the creature may take from a carried bag's contents as
+from the inventory (D-0006, through the Carried protocol). 21 GameTests with Backpacks+ 0.6.0 on
+the gametest server, green. Ships with Carried and Backpacks+ 0.6.0 as one pack on Rusty's go.
+
 Standalone NeoForge 1.21.1 mod, `com.chunkworks.schnappviecher`, repository
 `minecraft-schnappviecher`. A large traditional Wudele follows one player, giggles,
 steals one item, and gives it back when beaten or bribed with a snack. It never dies.

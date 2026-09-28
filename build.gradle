@@ -6,7 +6,10 @@ version = mod_version
 group = mod_group_id
 base { archivesName = mod_id }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
-repositories { mavenCentral() }
+repositories {
+    mavenLocal { content { includeGroup 'com.chunkworks.carried' } }
+    mavenCentral()
+}
 
 // The domain and its JUnit tests cannot import Minecraft. Only the two
 // adapter source sets receive the game, and gametest never ships.
@@ -68,7 +71,19 @@ neoForge {
 neoForge.runs.matching { !(it.name in ['gameTestServer', 'photoBooth']) }.configureEach {
     loadedMods = neoForge.mods.matching { it.name != "${mod_id}_gametest" }
 }
+// The gametest run's classpath gets main's dependencies (Carried among them) as well as its classes.
+configurations { gametestImplementation.extendsFrom implementation }
 dependencies {
+    // Carried (D-0006): the creature may take from a carried bag as from the inventory. Nested,
+    // as every consumer nests it; `./gradlew publishToMavenLocal` in minecraft-carried first.
+    jarJar(implementation('com.chunkworks.carried:carried')) {
+        version {
+            strictly '[1.0,2.0)'
+            prefer '1.0.0'
+        }
+    }
+    // Backpacks+ on the gametest server only, so a theft is proven against a real bag.
+    gametestRuntimeOnly files('../minecraft-backpacks-plus/build/libs/backpacksplus-0.6.0.jar')
     implementation sourceSets.domain.output
     gametestImplementation sourceSets.main.output
     gametestImplementation sourceSets.domain.output

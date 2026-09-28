@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 Rusty Shackleford and nfx. SPDX-License-Identifier: AGPL-3.0-or-later */
 package com.chunkworks.schnappviecher;
 
+import com.chunkworks.carried.api.Carried;
 import com.chunkworks.schnappviecher.domain.Encounter;
 import com.chunkworks.schnappviecher.domain.Standoff;
 import net.minecraft.core.particles.ParticleTypes;
@@ -213,15 +214,25 @@ public final class Schnappviech extends PathfinderMob {
         if(nearest!=null)navigation.moveTo(nearest,.72);
         LOGGER.info("stalk from ({},{}) of {} at ({},{}): no post reachable, holding {} short of ({},{}); tried{}",me.x(),me.z(),player.getScoreboardName(),them.x(),them.z(),shortfall,nearestPost==null?null:nearestPost.x(),nearestPost==null?null:nearestPost.z(),tried);
     }
+    /** requires: server thread; effects: every place the creature may take from, one chance each:
+     * every non-empty inventory slot, armour and offhand included (D-0002), then every non-empty
+     * cell of a bag the player carries (D-0006, through Carried; a worn bag is itself a slot, so it
+     * can still be taken whole); throws: none. */
+    public static java.util.List<Carried.Place> eligible(Player player) {
+        var out=new java.util.ArrayList<Carried.Place>();
+        var inventory=player.getInventory();
+        for(int i=0;i<inventory.getContainerSize();i++)if(!inventory.getItem(i).isEmpty())out.add(new Carried.Place(Carried.INVENTORY,i,inventory.getItem(i)));
+        Carried.forEachStored(player,(store,cell,stack)->out.add(new Carried.Place(store,cell,stack)));
+        return out;
+    }
     /** requires: server thread; effects: attempts one eligible theft through the real inventory path; throws: none. */
     public boolean trySteal(Player player) {
         if(victim==null||!victim.equals(player.getUUID())||encounter.stage()!=Encounter.Stage.STALK
                 ||distanceTo(player)>2.4||!hasLineOfSight(player)||isWatchedBy(player))return false;
-        int slot=-1,eligible=0;
-        for(int i=0;i<player.getInventory().getContainerSize();i++) {
-            if(!player.getInventory().getItem(i).isEmpty()&&random.nextInt(++eligible)==0)slot=i;
-        }
-        if(!claims().steal(getUUID(),player,slot))return false;
+        var places=eligible(player);
+        if(places.isEmpty())return false;
+        var place=places.get(random.nextInt(places.size()));
+        if(!claims().steal(getUUID(),player,place.store(),place.cell()))return false;
         encounter=encounter.stolen();entityData.set(JAW,18);sync();
         playSound(Content.CLACK.get(),1,.9f);flee(player,1.4);return true;
     }
