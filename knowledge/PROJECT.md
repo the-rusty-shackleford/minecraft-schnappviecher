@@ -1,8 +1,9 @@
 # Schnappviecher
 
-**0.1.3, built 2026-09-28, unreleased**: the creature may take from a carried bag's contents as
-from the inventory (D-0006, through the Carried protocol). 21 GameTests with Backpacks+ 0.6.0 on
-the gametest server, green. Ships with Carried and Backpacks+ 0.6.0 as one pack on Rusty's go.
+**0.1.3, released 2026-09-29 and deployed in pack 1.68.0** with Carried and Backpacks+ 0.6.0: the
+creature may take from a carried bag's contents as from the inventory (D-0006, through the Carried
+protocol). 16 JUnit, 21 GameTests with Backpacks+ 0.6.0 on the gametest server and the booth, all
+green in the release gate; sha1 `b01ab622` on the server. Not yet seen in play.
 
 Standalone NeoForge 1.21.1 mod, `com.chunkworks.schnappviecher`, repository
 `minecraft-schnappviecher`. A large traditional Wudele follows one player, giggles,
