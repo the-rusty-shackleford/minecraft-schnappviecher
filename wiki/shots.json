@@ -1,0 +1,8 @@
+{"shots": [
+  {"from": "run/booth/screenshots/schnapp-01-front.png", "to": "img/schnappviech.webp"},
+  {"from": "run/booth/screenshots/schnapp-03-head.png", "to": "img/head.webp"},
+  {"from": "run/booth/screenshots/schnapp-04-stolen-item.png", "to": "img/stolen.webp"},
+  {"from": "run/booth/screenshots/schnapp-05-banner.png", "to": "img/banner.webp"},
+  {"from": "run/booth/screenshots/schnapp-06-paid.png", "to": "img/paid.webp"},
+  {"from": "run/booth/screenshots/schnapp-07-night.png", "to": "img/night.webp"}
+]}
